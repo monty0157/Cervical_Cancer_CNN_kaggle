@@ -60,7 +60,7 @@ train_dataset = train_datagen.flow_from_directory('data/train_no_exif',
 
 '''test_dataset = test_datagen.flow_from_directory('data/test_set',
                                                   batch_size = batch_size,
-                                              c    class_mode = 'binary',
+                                                  class_mode = 'binary',
                                                   target_size = (64,64))'''
 
 
