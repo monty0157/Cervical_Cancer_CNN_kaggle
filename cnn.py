@@ -5,8 +5,29 @@ import numpy as np
 import pandas as pd
 
 #BUILD CNN
-from keras.models import Sequential
-from keras.layers import Convolution2D, MaxPooling2D, Flatten, Dense, Dropout
+from keras.models import Sequential, Model
+from keras.layers import Convolution2D, MaxPooling2D, Flatten, Dense, Dropout,  GlobalAveragePooling2D
+from keras.applications.vgg16 import VGG16
+
+base_model = VGG16(include_top = False, input_shape = (224,224, 3))
+
+
+# add a global spatial average pooling layer
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+# let's add a fully-connected layer
+x = Dense(1024, activation='relu')(x)
+# and a logistic layer -- let's say we have 200 classes
+predictions = Dense(3, activation='softmax')(x)
+
+# this is the model we will train
+model = Model(inputs=base_model.input, outputs=predictions)
+
+for layer in base_model.layers:
+    layer.trainable = False
+
+model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+
 
 def build_model(optimizer = 'adam', units = 128, filters = 32, kernel_size = 3, dropout_layers = 1):
     model = Sequential()
@@ -44,7 +65,7 @@ def build_model(optimizer = 'adam', units = 128, filters = 32, kernel_size = 3, 
 from keras.preprocessing.image import ImageDataGenerator
 batch_size = 25
 n_images = 1481
-model = build_model()
+#model = build_model()
 
 train_datagen = ImageDataGenerator(rescale = 1./255,
                                    rotation_range = 0.2,
@@ -56,7 +77,7 @@ test_datagen = ImageDataGenerator(rescale = 1./255)
 train_dataset = train_datagen.flow_from_directory('data/train_no_exif',
                                                   batch_size = batch_size,
                                                   class_mode = 'categorical',
-                                                  target_size = (64,64))
+                                                  target_size = (224,224))
 
 '''test_dataset = test_datagen.flow_from_directory('data/test_set',
                                                   batch_size = batch_size,
@@ -70,9 +91,8 @@ model.fit_generator(train_dataset,
                             epochs = 25,
                             #validation_data = test_dataset,
                             #validation_steps = 2000/batch_size,
-                            workers = 32,
-                            max_q_size = 16)
-
+                            workers = 32)
+                            
 #print('Accuracy, loss:', model.evaluate_generator(test_dataset, steps = 2000))
 
 '''#GRIDSEARCH
