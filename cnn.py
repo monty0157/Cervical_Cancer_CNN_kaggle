@@ -8,6 +8,8 @@ import pandas as pd
 from keras.models import Sequential, Model
 from keras.layers import Convolution2D, MaxPooling2D, Flatten, Dense, Dropout,  GlobalAveragePooling2D
 from keras.applications.vgg16 import VGG16
+from spatial_transformer import SpatialTransformer
+
 
 '''base_model = VGG16(include_top = False, input_shape = (64,64, 3))
 
@@ -31,7 +33,22 @@ model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = [
 
 
 def build_model(optimizer = 'rmsprop', units = 128, filters = 32, kernel_size = 3, dropout_layers = 0):
+    #ADD LOCNET FOR SPATIAL TRANSFORMER
+    locnet = Sequential()
+    locnet.add(MaxPooling2D(pool_size=(2,2), input_shape=(100,100,3)))
+    locnet.add(Convolution2D(20, (5, 5)))
+    locnet.add(MaxPooling2D(pool_size=(2,2)))
+    locnet.add(Convolution2D(20, (5, 5)))
+    
+    locnet.add(Flatten())
+    locnet.add(Dense(units = 50, activation = 'relu'))
+    locnet.add(Dense(6))
+    
     model = Sequential()
+    
+    model.add(SpatialTransformer(localization_net = locnet,
+                         output_size=(64,64), input_shape = (100, 100, 3)))
+    
     model.add(Convolution2D(filters = filters,
                             kernel_size = kernel_size,
                             strides = 1,
@@ -85,7 +102,7 @@ train_dataset = train_datagen.flow_from_directory('data/train_no_exif',
                                                   class_mode = 'categorical',
                                                   target_size = (100,100))
 
-validation_dataset = test_datagen.flow_from_directory('data/validation_no_exif',
+'''validation_dataset = test_datagen.flow_from_directory('data/validation_no_exif',
                                                   batch_size = batch_size,
                                                   class_mode = 'categorical',
                                                   target_size = (100,100))
@@ -94,7 +111,7 @@ test_dataset = test_datagen.flow_from_directory('data/test_no_exif',
                                                   batch_size = batch_size,
                                                   class_mode = 'categorical',
                                                   target_size = (100,100),
-                                                  shuffle = False)
+                                                  shuffle = False)'''
 
 
 #TRAINING AND EVALUATING ON IMAGE GENERATOR
@@ -104,8 +121,8 @@ save_model = ModelCheckpoint('model.{epoch:02d}--{val_loss:.2f}_own_model_500.hd
 model.fit_generator(train_dataset,
                             steps_per_epoch = n_images/batch_size,
                             epochs = 100,
-                            validation_data = validation_dataset,
-                            validation_steps = n_images_validation,
+                            #validation_data = validation_dataset,
+                            #validation_steps = n_images_validation,
                             workers = 32,
                             callbacks=[save_model])
 
@@ -113,7 +130,7 @@ model.fit_generator(train_dataset,
 #prediction = model.predict_generator(test_dataset, steps=n_images_test/batch_size)
 #print(prediction)
 #pd.DataFrame(prediction, columns=['Type_1', 'Type_2', 'Type_3']).to_csv('prediction_own_model_2.csv')
-print('Accuracy, loss:', model.evaluate_generator(validation_dataset, steps = n_images_validation/batch_size))
+#print('Accuracy, loss:', model.evaluate_generator(validation_dataset, steps = n_images_validation/batch_size))
 
 '''#GRIDSEARCH
 from data_processing import grid_search_helper
