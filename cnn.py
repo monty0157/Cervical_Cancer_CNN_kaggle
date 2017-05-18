@@ -9,34 +9,35 @@ from keras.models import Sequential, Model
 from keras.layers import Convolution2D, MaxPooling2D, Flatten, Dense, Dropout,  GlobalAveragePooling2D
 from keras.applications.vgg16 import VGG16
 
-base_model = VGG16(include_top = False, input_shape = (224,224, 3))
+'''base_model = VGG16(include_top = False, input_shape = (64,64, 3))
 
 
 # add a global spatial average pooling layer
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 # let's add a fully-connected layer
-x = Dense(1024, activation='relu')(x)
+x = Dense(100, activation='relu')(x)
+x = Dense(100, activation='relu')(x)
 # and a logistic layer -- let's say we have 200 classes
 predictions = Dense(3, activation='softmax')(x)
 
 # this is the model we will train
 model = Model(inputs=base_model.input, outputs=predictions)
 
-for layer in base_model.layers:
-    layer.trainable = False
+#for layer in base_model.layers:
+#    layer.trainable = False
 
-model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])
+model.compile(optimizer = 'adam', loss = 'categorical_crossentropy', metrics = ['accuracy'])'''
 
 
-def build_model(optimizer = 'adam', units = 128, filters = 32, kernel_size = 3, dropout_layers = 1):
+def build_model(optimizer = 'rmsprop', units = 128, filters = 32, kernel_size = 3, dropout_layers = 0):
     model = Sequential()
     model.add(Convolution2D(filters = filters,
                             kernel_size = kernel_size,
                             strides = 1,
                             padding = 'same',
                             activation = 'relu',
-                            input_shape = (64, 64, 3)))
+                            input_shape = (100, 100, 3)))
 
     model.add(MaxPooling2D(strides = 2, pool_size = 2))
     model.add(Convolution2D(filters = filters,
@@ -63,45 +64,64 @@ def build_model(optimizer = 'adam', units = 128, filters = 32, kernel_size = 3, 
 
 #CREATING TEST SET AND TRAINING GENERATORS
 from keras.preprocessing.image import ImageDataGenerator
-batch_size = 25
-n_images = 1481
-#model = build_model()
+batch_size = 32
+n_images = 4808
+n_images_validation = 1455
+n_images_test = 512
+model = build_model()
 
-train_datagen = ImageDataGenerator(rescale = 1./255,
-                                   rotation_range = 0.2,
-                                   zoom_range = 0.2,
-                                   horizontal_flip = True)
+train_datagen = ImageDataGenerator(rescale = 1./255)
+                                   #rotation_range = 0.2,
+                                   #zoom_range = 0.2,
+                                   #horizontal_flip = True)
+
+validation_datagen = ImageDataGenerator(rescale = 1./255)
 
 test_datagen = ImageDataGenerator(rescale = 1./255)
+
 
 train_dataset = train_datagen.flow_from_directory('data/train_no_exif',
                                                   batch_size = batch_size,
                                                   class_mode = 'categorical',
-                                                  target_size = (224,224))
+                                                  target_size = (100,100))
 
-'''test_dataset = test_datagen.flow_from_directory('data/test_set',
+validation_dataset = test_datagen.flow_from_directory('data/validation_no_exif',
                                                   batch_size = batch_size,
-                                                  class_mode = 'binary',
-                                                  target_size = (64,64))'''
+                                                  class_mode = 'categorical',
+                                                  target_size = (100,100))
+
+test_dataset = test_datagen.flow_from_directory('data/test_no_exif',
+                                                  batch_size = batch_size,
+                                                  class_mode = 'categorical',
+                                                  target_size = (100,100),
+                                                  shuffle = False)
 
 
 #TRAINING AND EVALUATING ON IMAGE GENERATOR
+from keras.callbacks import ModelCheckpoint
+save_model = ModelCheckpoint('model.{epoch:02d}--{val_loss:.2f}_own_model_500.hdf5', monitor = 'val_loss', save_best_only = True)
+
 model.fit_generator(train_dataset,
                             steps_per_epoch = n_images/batch_size,
-                            epochs = 25,
-                            #validation_data = test_dataset,
-                            #validation_steps = 2000/batch_size,
-                            workers = 32)
-                            
-#print('Accuracy, loss:', model.evaluate_generator(test_dataset, steps = 2000))
+                            epochs = 100,
+                            validation_data = validation_dataset,
+                            validation_steps = n_images_validation,
+                            workers = 32,
+                            callbacks=[save_model])
+
+#model.load_weights('model.12--0.86_own_model_500.hdf5')
+#prediction = model.predict_generator(test_dataset, steps=n_images_test/batch_size)
+#print(prediction)
+#pd.DataFrame(prediction, columns=['Type_1', 'Type_2', 'Type_3']).to_csv('prediction_own_model_2.csv')
+print('Accuracy, loss:', model.evaluate_generator(validation_dataset, steps = n_images_validation/batch_size))
 
 '''#GRIDSEARCH
 from data_processing import grid_search_helper
-images_list, labels_list = grid_search_helper(target_size = (64,64))
+images_list, labels_list = grid_search_helper(target_size = (224,224))
 
 from sklearn.model_selection import GridSearchCV
 from keras.wrappers.scikit_learn import KerasClassifier
-grid_search = KerasClassifier(build_fn = build_model)
+grid_search = KerasClassifier(build_fn = model)
 
 parameters = {
     'dropout_layers': [0, 1, 2],
