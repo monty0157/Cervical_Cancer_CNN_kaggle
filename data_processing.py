@@ -3,12 +3,21 @@ from keras.preprocessing import image
 import random
 import numpy as np
 
+#TRAINING DATA WITH EXIF
 Type_1_path_train = './data/train/Type_1/'
 Type_1_list_train = os.listdir(Type_1_path_train)
 type2_path_train = './data/train/Type_2/'
 type2_list_train = os.listdir(type2_path_train)
 type3_path_train = './data/train/Type_3/'
 type3_list_train = os.listdir(type3_path_train)
+
+#TRAINING DATA WITOHUT EXIF
+Type_1_path_train_no_exif = './data/train_no_exif/Type_1/'
+Type_1_list_train_no_exif = os.listdir(Type_1_path_train_no_exif)
+Type_2_path_train_no_exif = './data/train_no_exif/Type_2/'
+Type_2_list_train_no_exif = os.listdir(Type_2_path_train_no_exif)
+Type_3_path_train_no_exif = './data/train_no_exif/Type_3/'
+Type_3_list_train_no_exif = os.listdir(Type_3_path_train_no_exif)
 
 type1_path_val = './data/validation/Type_1/'
 type1_list_val = os.listdir(type1_path_val)
@@ -20,35 +29,26 @@ type3_list_val = os.listdir(type3_path_val)
 test_path_train = './data/test/'
 test_list_train = os.listdir(test_path_train)
 
-train_directories = ['Type_1']
+train_directories = ['Type_1', 'Type_2', 'Type_3']
 val_directories = ['Type_1', 'Type_3']
+
 #PREPARING DATA FOR GRID SEARCH
 def grid_search_helper(target_size):
 
     images_list = []
     labels_list = []
-    for file in cats_list_train:
-        if (file != '.DS_Store'):
-            img = image.load_img(cats_path_train + file, target_size = target_size)
-            img = np.asarray(img)
-
-            #RESCALE IMAGE
-            img = img/255
-            images_list.append(img)
-
-            #ADD AS CLASS 0
-            labels_list.append(0)
-    for file in dogs_list_train:
-        if (file != '.DS_Store'):
-            img = image.load_img(dogs_path_train + file, target_size = target_size)
-            img = np.asarray(img)
-
-            #RESCALE IMAGE
-            img = img/255
-            images_list.append(img)
-
-            #ADD AS CLASS 1
-            labels_list.append(1)
+    for i in range(len(train_directories)):
+        for file in eval(train_directories[i] + '_list_train_no_exif'):
+            if (file != '.DS_Store'):
+                img = image.load_img(eval(train_directories[i] + '_path_train_no_exif') + '/' + file, target_size = target_size)
+                img = np.asarray(img)
+    
+                #RESCALE IMAGE
+                img = img/255
+                images_list.append(img)
+    
+                #ADD AS CLASS 0
+                labels_list.append(i)
 
     #SHUFFLE DATA
     zip_data_for_shuffle = list(zip(images_list,labels_list))
@@ -146,5 +146,3 @@ def remove_exif():
             image_without_exif.putdata(data)
 
             image_without_exif.save('./data/validation_no_exif/Type_3/' + file)'''
-
-remove_exif()
